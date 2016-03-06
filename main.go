@@ -12,11 +12,10 @@ const (
 	version = "0.1.0"
 	prompt  = "g$"
 	shell   = "sh"
-	git     = "git"
 )
 
 func branch() ([]byte, error) {
-	c := exec.Command(git, "branch")
+	c := exec.Command("git", "branch")
 	return c.CombinedOutput()
 }
 
@@ -27,12 +26,13 @@ func main() {
 
 	for {
 		br, err := branch()
+		brs := string(br)
 		if err != nil {
-			fmt.Println(string(br))
+			fmt.Println(brs)
 			return
 		}
 
-		fmt.Printf("%s [%s] ", prompt, string(br))
+		fmt.Printf("%s [%s] ", prompt, strings.TrimSpace(brs))
 
 		cmd, err := reader.ReadString('\n')
 		if err != nil {
@@ -46,27 +46,27 @@ func main() {
 			args[i] = strings.TrimSpace(args[i])
 		}
 
-		var proc string
-
 		switch strings.ToLower(args[0]) {
 		case "exit":
 			return
 		case "ng":
-			proc = shell
-			args = args[1:]
+			if err := run(args[1:]); err != nil {
+				fmt.Println(err)
+			}
 		default:
-			proc = git
+			args = append([]string{"git"}, args...)
+			if err := run(args); err != nil {
+				fmt.Println(err)
+			}
 		}
 
-		c := exec.Command(proc, args...)
-		c.Stdin = os.Stdin
-		c.Stdout = os.Stdout
-		c.Stderr = os.Stderr
-		if err := c.Run(); err != nil {
-			fmt.Printf("error running command: %s\n", err)
-			continue
-		}
-
-		fmt.Println(c.ProcessState)
 	}
+}
+
+func run(args []string) error {
+	c := exec.Command(args[0], args[1:]...)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
 }
